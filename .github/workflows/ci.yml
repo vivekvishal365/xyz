@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+        env:
+          # Build-time placeholders. Real values live in Vercel; these only need
+          # to satisfy schema validation so the build can complete.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          SUPABASE_SERVICE_ROLE_KEY: sentinel-service-role-must-not-ship
+
+      # §39: no server secret may reach the client bundle. This asserts it
+      # rather than trusting the convention, by planting a sentinel value in the
+      # server-only env and failing if it appears in anything the browser gets.
+      - name: Assert no server secret in client bundle
+        run: |
+          if grep -rl "sentinel-service-role-must-not-ship" .next/static 2>/dev/null; then
+            echo "::error::A server-only secret was found in the client bundle."
+            exit 1
+          fi
+          echo "OK — no server secret in .next/static"

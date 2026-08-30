@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/*
+ * SignalX design tokens.
+ *
+ * PRD §38: clean, information-dense, premium, financial/research aesthetic.
+ * Explicitly avoids the casino-trading look — severity colours are muted and
+ * used for meaning only, never for decoration or flashing.
+ */
+
+@theme {
+  --font-sans:
+    "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:
+    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* neutrals — cool, blue-biased, chosen rather than inherited */
+  --color-ground: #e9ebef;
+  --color-surface: #fafbfd;
+  --color-surface-2: #f1f3f7;
+  --color-ink: #12151b;
+  --color-ink-2: #4e5566;
+  --color-ink-3: #7c8494;
+  --color-rule: #d2d6de;
+
+  /* single accent */
+  --color-accent: #2c46c8;
+  --color-accent-ink: #223aae;
+  --color-accent-bg: #e3e7fa;
+
+  /* semantic severity — separate from the accent, deliberately muted */
+  --color-sev-high: #a8462c;
+  --color-sev-med: #8a6317;
+  --color-sev-low: #3d6a51;
+  --color-sev-high-bg: #f7e5df;
+  --color-sev-med-bg: #f6eedc;
+  --color-sev-low-bg: #e2ede6;
+}
+
+/*
+ * Dark theme.
+ *
+ * `@theme` only works at the top level — it is a build-time directive, not a
+ * runtime rule, so it cannot be nested in a media query. Tailwind emits the
+ * tokens above onto :root and compiles `bg-ground` to `var(--color-ground)`,
+ * which means redefining the same variables here overrides them at runtime and
+ * every utility follows automatically.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-ground: #0e1016;
+    --color-surface: #161a24;
+    --color-surface-2: #1c2130;
+    --color-ink: #e7e9ef;
+    --color-ink-2: #a2a9ba;
+    --color-ink-3: #717989;
+    --color-rule: #282d3b;
+
+    --color-accent: #8397ff;
+    --color-accent-ink: #a3b2ff;
+    --color-accent-bg: #1b2144;
+
+    --color-sev-high: #e08a6d;
+    --color-sev-med: #d6a950;
+    --color-sev-low: #74ae8e;
+    --color-sev-high-bg: #2c1c17;
+    --color-sev-med-bg: #2a2314;
+    --color-sev-low-bg: #16241d;
+  }
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--color-ground);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* PRD §38: no unnecessary animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
