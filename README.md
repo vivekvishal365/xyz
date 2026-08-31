@@ -2,7 +2,7 @@
 
 Economic intelligence for India. Detects meaningful changes in economic, commodity, market, weather and policy data, connects them through curated cause-and-effect relationships, and explains what could be affected.
 
-**Status: Phase 0 complete. Phase 1 in progress** — adapters, normalizer and the forecast module are built and tested; wiring them to the database and to a UI is still to come.
+**Status: Phase 1 complete.** ~34,700 real observations across 21 live indicators, each with a backtested SignalX estimate. Durable ingestion pipeline, health monitoring, and the indicator detail screen are all working end to end.
 
 > ⚠️ **Authentication is currently bypassed** when `NEXT_PUBLIC_AUTH_BYPASS=true`. The five tab routes are public and a placeholder user is supplied. Temporary, for UI testing — removal steps are in `src/lib/auth/bypass.ts`.
 
@@ -47,10 +47,22 @@ npm run dev
 |---|---|
 | `npm run dev` | Dev server on :3000 |
 | `npm run build` | Production build |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run lint` | ESLint |
-| `npm run test` | Vitest |
 | `npm run check` | typecheck + lint + test — run before pushing |
+| `npm run db:seed` | Seed countries, sources and the indicator catalogue (idempotent) |
+| `npm run ingest` | Run the pipeline for every active indicator |
+| `npm run db:summary` | What is actually in the database |
+| `npm run verify:fred` | Probe every FRED series against the live API |
+| `npm run migrate <file>` | Apply a migration (needs `SUPABASE_DB_URL`) |
+
+### Running the pipeline locally
+
+```bash
+npx inngest-cli@latest dev -u http://localhost:3000/api/inngest
+```
+
+Then open http://localhost:8288. `npm run ingest` does the same work without Inngest, which is usually faster for development.
+
+**`INNGEST_DEV=1` must be set locally.** Without it, and without a signing key, the SDK refuses to serve and `/api/inngest` returns a bare 500. In production the reverse holds: unset `INNGEST_DEV` and set both `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY`, or you get the same 500 and it will look like a broken deploy.
 
 ---
 
@@ -62,8 +74,9 @@ These need accounts and credentials, so they could not be done for you.
 2. **Apply the schema**: run `supabase/migrations/20260831000000_initial_schema.sql` in the Supabase SQL editor, or `supabase db push` with the CLI linked to the project.
 3. **Enable Google OAuth** in Supabase → Authentication → Providers, and add the redirect URL `<site>/auth/callback`.
 4. **Set the Site URL** in Supabase → Authentication → URL Configuration to match `NEXT_PUBLIC_SITE_URL`.
-5. **Create the Vercel project**, import the repo, and add the same four env vars.
+5. **Create the Vercel project**, import the repo, and add the env vars.
 6. **Push to GitHub** so the CI workflow in `.github/workflows/ci.yml` runs.
+7. **Create an Inngest app**, point it at `<site>/api/inngest`, and set `INNGEST_EVENT_KEY` + `INNGEST_SIGNING_KEY` in Vercel. The daily cron lives in code (`src/lib/inngest/functions.ts`), not in Vercel config.
 
 ---
 
@@ -85,20 +98,23 @@ src/
     auth/                  getAppUser() + the temporary bypass
     env.ts                 §39 secret boundary, schema-validated
     supabase/              client (auth only) + server + service-role
-    ingest/                adapter interface, adapters/, normalizer, periods
+    db/                    repository layer
+    ingest/                adapters, normalizer, catalogue, pipeline, health
     engine/forecast/       D1 — methods, backtest, surprise
+    indicators/            detail assembly for the UI
+    inngest/               durable pipeline: client, events, functions
   proxy.ts                 route protection and session refresh
-scripts/
-  smoke-ingest.ts          manual live run against Open-Meteo (network)
+scripts/                   seed, ingest, verification, migrations
 ```
 
-### Running the ingestion spine against a live source
+### Verification scripts
 
-```bash
-npx tsx scripts/smoke-ingest.ts
-```
+None of these run in `npm test` — they all make network calls.
 
-Pulls three years of real Mumbai rainfall from Open-Meteo (no API key needed) and runs it through fetch → parse → normalize → backtest → forecast, printing every method's error and the trust verdict. Not part of `npm test`, because it makes a network call.
+- `scripts/smoke-ingest.ts` — the whole spine against live Open-Meteo (no key needed).
+- `scripts/verify-fred.ts` — probes every catalogued FRED series. **Run this before changing the seed.** A dead series returns HTTP 400 and is obvious; a *stale* one returns a valid response full of old numbers and nothing errors.
+- `scripts/test-revision.ts` — perturbs a stored observation and confirms the provider's real value comes back as a revision, with the prior print preserved and exactly one current row.
+- `scripts/db-check.ts` — confirms the schema and RPCs the pipeline depends on exist.
 
 ### Two rules the tooling enforces
 

@@ -195,6 +195,40 @@ export async function storeRawPayload(
   return { row: data as RawPayloadRow, alreadySeen: false };
 }
 
+/**
+ * The stored body for a payload.
+ *
+ * Lets the parse stage retry without re-hitting the provider, and backs the
+ * source drawer's "original value" (§26).
+ */
+export async function getRawPayloadBody(
+  db: SupabaseClient,
+  rawPayloadId: string,
+): Promise<string | null> {
+  const { data, error } = await db
+    .from("raw_payloads")
+    .select("body")
+    .eq("id", rawPayloadId)
+    .maybeSingle();
+
+  if (error) fail(`getRawPayloadBody(${rawPayloadId})`, error);
+  return (data?.body as string | undefined) ?? null;
+}
+
+export async function getRawPayload(
+  db: SupabaseClient,
+  rawPayloadId: string,
+): Promise<RawPayloadRow | null> {
+  const { data, error } = await db
+    .from("raw_payloads")
+    .select("id, ingest_run_id, source_id, request_url, fetched_at, content_hash, content_type")
+    .eq("id", rawPayloadId)
+    .maybeSingle();
+
+  if (error) fail(`getRawPayload(${rawPayloadId})`, error);
+  return (data as RawPayloadRow | null) ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Observations
 // ---------------------------------------------------------------------------
