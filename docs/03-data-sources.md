@@ -30,7 +30,7 @@ Adapters are dumb: fetch, hash, store, parse. No business logic, no interpretati
 
 | Source | Access | Covers | Reality check |
 |---|---|---|---|
-| **FRED** (St. Louis Fed) | free API key, documented, stable | global macro, US rates, some India series, several commodity series | The single best starting point. Many India series here are IMF/OECD-relayed and **lag the Indian originals**, so treat as context, not as the primary India feed. |
+| **FRED** (St. Louis Fed) | free API key, documented, stable | global macro, US rates, commodities | **Verified live 31 Aug 2026: 18 of 19 catalogued series current and ingesting.** But see the India CPI finding below — the India relays are worse than "lagging". |
 | **Open-Meteo** | free, no key | rainfall, temperature, forecast + ERA5 historical archive | Genuinely good, no auth friction. See the monsoon caveat below. |
 | **World Bank** | open, no key | long-run development series | Annual, heavily lagged. Useful for historical context panels, **nearly useless for "what changed"**. Low priority. |
 
@@ -77,6 +77,20 @@ Candidates to price (all ⚠️ verify India coverage and, first, redistribution
 Whichever vendor wins sits behind the same `SourceAdapter` interface as everything else, so a later swap is one file.
 
 ---
+
+### ⚠️ India CPI is not available from FRED — found in live verification
+
+Confirmed against the live API on 31 Aug 2026, and worse than the general "FRED lags for India" caveat implied.
+
+**Every monthly India CPI series on FRED stopped updating in March 2025.** `INDCPIALLMINMEI` and `CPALTT01INM659N` both end there — 518 days stale — because the OECD feed behind them stopped. Quarterly and annual variants are staler still, and FRED search returns no live monthly alternative.
+
+This is the single most important indicator in the product. The worked example in PRD §2 terminates in inflation, and §15 leads with it.
+
+`india-cpi` is therefore **seeded as inactive**, with the reason recorded on the row, so the gap is visible in the registry rather than silently absent or — worse — silently stale. It needs MOSPI directly or a vendor; fold it into the D2 evaluation, since several vendors bundle Indian macro.
+
+Other India series were replaced with live equivalents during the same pass: 10-year yield is `INDIRLTLT01STM` (`IRLTLT01INM156N` returns HTTP 400), real GDP is `INDGDPRQPSMEI`, industrial production is `INDPRINTO01GYSAM`. Call money rate, 3-month interbank and REER were added as live RBI-adjacent proxies.
+
+**Standing lesson.** A *dead* FRED series returns HTTP 400 and is obvious. A *stale* one returns a perfectly valid response full of old numbers, and nothing errors. The second is the dangerous failure, and it is why `npm run verify:fred` judges every series against its own expected release lag rather than a global cutoff. Run it before any seed change.
 
 ## 3. Missing sources the PRD needs but does not list
 

@@ -24,6 +24,8 @@ export type IndicatorForecast = {
   isTrusted: boolean;
   /** Why there is no estimate. Surfaced in the admin panel, not swallowed. */
   reason: string | null;
+  /** Caveats that did not prevent a forecast but a reviewer should see. */
+  notes: string[];
   /** Every method's backtest, for the admin panel's model comparison. */
   evaluations: BacktestResult[];
 };
@@ -43,6 +45,7 @@ export function forecastIndicator(series: SeriesInput): IndicatorForecast {
     mae: null,
     isTrusted: false,
     reason: null,
+    notes: [],
     evaluations: [],
   };
 
@@ -54,14 +57,26 @@ export function forecastIndicator(series: SeriesInput): IndicatorForecast {
     return { ...empty, reason: "not enough history" };
   }
 
-  // Seasonal methods index backwards by position, so a gap would silently make
-  // "12 slots ago" mean something other than the same month last year. Refuse
-  // rather than forecast from a series we have misread.
-  if (!isContiguous(series.periodEnds, series.periodType)) {
-    return { ...empty, reason: "series has gaps or is out of order" };
+  const notes: string[] = [];
+
+  // Gaps only invalidate SEASONAL methods, which index backwards by position —
+  // "12 slots ago" stops meaning "same month last year" once a period is
+  // missing. `naive` and `drift` read only the last value and the overall
+  // slope, so they remain correct across gaps.
+  //
+  // Refusing the whole forecast here would leave every business-day series —
+  // crude, USD/INR, treasuries, VIX — with no estimate at all, because weekends
+  // are gaps in calendar terms. Those are the series the product most needs.
+  const contiguous = isContiguous(series.periodEnds, series.periodType);
+  const seasonLength = contiguous ? seasonLengthFor(series.periodType) : null;
+
+  if (!contiguous) {
+    notes.push(
+      "series is not calendar-contiguous (weekends, holidays or missing periods); " +
+        "seasonal methods disabled",
+    );
   }
 
-  const seasonLength = seasonLengthFor(series.periodType);
   const { best, all } = selectBestMethod(series.values, seasonLength, FORECAST_METHODS);
 
   if (!best) {
@@ -69,13 +84,14 @@ export function forecastIndicator(series: SeriesInput): IndicatorForecast {
     return {
       ...empty,
       evaluations: all,
+      notes,
       reason: closest?.untrustedReason ?? "no method beat the last-value baseline",
     };
   }
 
   const expected = forecastWith(best.method, series.values, seasonLength);
   if (expected === null) {
-    return { ...empty, evaluations: all, reason: "selected method produced no forecast" };
+    return { ...empty, evaluations: all, notes, reason: "selected method produced no forecast" };
   }
 
   const lastPeriodEnd = series.periodEnds.at(-1) ?? null;
@@ -87,6 +103,7 @@ export function forecastIndicator(series: SeriesInput): IndicatorForecast {
     mae: best.mae,
     isTrusted: true,
     reason: null,
+    notes,
     evaluations: all,
   };
 }

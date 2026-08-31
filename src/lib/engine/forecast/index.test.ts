@@ -46,11 +46,14 @@ describe("forecastIndicator", () => {
     expect(result.forPeriodEnd).toBe("2028-01-31");
   });
 
-  it("refuses a series with a gap rather than misreading the season", () => {
+  it("disables seasonal methods on a gappy series but still forecasts", () => {
+    // A gap makes "12 slots ago" stop meaning "same month last year", so
+    // seasonal methods must not run. `naive` and `drift` read only the last
+    // value and the overall slope, so they stay correct — and refusing
+    // outright would leave every business-day series (crude, USD/INR,
+    // treasuries) with no estimate, since weekends are calendar gaps.
     const full = series(96);
     const withGap: SeriesInput = {
-      // Drop one month from the middle: every seasonal lookup after it would
-      // silently be off by one.
       periodEnds: [...full.periodEnds.slice(0, 40), ...full.periodEnds.slice(41)],
       values: [...full.values.slice(0, 40), ...full.values.slice(41)],
       periodType: "month",
@@ -58,9 +61,21 @@ describe("forecastIndicator", () => {
 
     const result = forecastIndicator(withGap);
 
-    expect(result.isTrusted).toBe(false);
-    expect(result.expected).toBeNull();
-    expect(result.reason).toBe("series has gaps or is out of order");
+    expect(result.notes.some((n) => n.includes("not calendar-contiguous"))).toBe(true);
+
+    const seasonal = result.evaluations.filter((e) => e.method.startsWith("seasonal"));
+    expect(seasonal.length).toBeGreaterThan(0);
+    expect(seasonal.every((e) => !e.isTrusted)).toBe(true);
+    expect(seasonal.every((e) => e.untrustedReason?.includes("season length"))).toBe(true);
+
+    // A non-seasonal method can still be selected.
+    if (result.isTrusted) {
+      expect(result.method === "naive" || result.method === "drift").toBe(true);
+    }
+  });
+
+  it("carries no notes for a clean contiguous series", () => {
+    expect(forecastIndicator(series(96)).notes).toEqual([]);
   });
 
   it("refuses a malformed series", () => {

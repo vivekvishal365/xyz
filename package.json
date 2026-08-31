@@ -10,7 +10,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm run lint && npm run test"
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:summary": "tsx scripts/db-summary.ts",
+    "ingest": "tsx scripts/ingest.ts",
+    "verify:fred": "tsx scripts/verify-fred.ts",
+    "migrate": "tsx scripts/apply-migration.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
@@ -29,9 +34,12 @@
     "@types/node": "^24.9.2",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
+    "dotenv": "^17.4.2",
     "eslint": "^9.39.0",
     "eslint-config-next": "^16.3.3",
+    "postgres": "^3.4.9",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }
