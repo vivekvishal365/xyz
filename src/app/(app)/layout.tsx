@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAppUser } from "@/lib/auth/server";
+import { isAuthBypassActive } from "@/lib/auth/bypass";
 import { PrimaryNav } from "@/components/layout/primary-nav";
 import { DisclaimerBar } from "@/components/layout/disclaimer";
 import { AuthBypassBanner } from "@/components/layout/auth-bypass-banner";
@@ -16,6 +17,8 @@ import { SignOutButton } from "@/components/layout/sign-out-button";
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getAppUser();
+  // Same answer the gate used, so the banner cannot disagree with reality.
+  const bypassActive = isAuthBypassActive();
 
   if (!user) redirect("/login");
 
@@ -23,7 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="min-h-dvh md:pl-56">
       <PrimaryNav />
       <div className="flex min-h-dvh flex-col">
-        <AuthBypassBanner />
+        <AuthBypassBanner active={bypassActive} />
         <header className="flex items-center justify-between gap-4 border-b border-rule px-4 py-3 md:px-8">
           <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3 md:hidden">
             SignalX

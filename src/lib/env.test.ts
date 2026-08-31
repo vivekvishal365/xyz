@@ -62,6 +62,25 @@ describe("auth bypass flag", () => {
   });
 });
 
+describe("server auth bypass flag", () => {
+  const base = { SUPABASE_SERVICE_ROLE_KEY: "key" };
+
+  it("is off when unset", () => {
+    expect(schemas.serverSchema.parse(base).AUTH_BYPASS).toBe("false");
+  });
+
+  it("falls back to off for anything malformed", () => {
+    // Same rule as the public flag: a typo must leave authentication ON.
+    for (const value of ["TRUE", "1", "yes", ""]) {
+      expect(schemas.serverSchema.parse({ ...base, AUTH_BYPASS: value }).AUTH_BYPASS).toBe("false");
+    }
+  });
+
+  it("is on only for exactly \"true\"", () => {
+    expect(schemas.serverSchema.parse({ ...base, AUTH_BYPASS: "true" }).AUTH_BYPASS).toBe("true");
+  });
+});
+
 describe("server env schema", () => {
   it("requires the service role key", () => {
     expect(schemas.serverSchema.safeParse({}).success).toBe(false);

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { parsePublicEnv } from "@/lib/env";
-import { isAuthBypassEnabled } from "@/lib/auth/bypass";
+import { isAuthBypassActive } from "@/lib/auth/bypass";
 
 /** Routes that require a session. Everything else is public. */
 const PROTECTED_PREFIXES = [
@@ -27,7 +27,7 @@ export async function proxy(request: NextRequest) {
   // TEMPORARY (see src/lib/auth/bypass.ts). Skips route protection entirely so
   // the tab routes can be viewed without a session. Returning early also avoids
   // a pointless Supabase round-trip on every request while it is on.
-  if (isAuthBypassEnabled()) {
+  if (isAuthBypassActive()) {
     return NextResponse.next({ request });
   }
 

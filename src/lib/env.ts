@@ -22,6 +22,9 @@ const publicSchema = z.object({
 
 const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  // TEMPORARY — runtime twin of NEXT_PUBLIC_AUTH_BYPASS. Same .catch reasoning:
+  // a typo must leave authentication ON.
+  AUTH_BYPASS: z.enum(["true", "false"]).default("false").catch("false"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 
@@ -64,6 +67,7 @@ export function parseServerEnv(): ServerEnv {
 
   const parsed = serverSchema.safeParse({
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    AUTH_BYPASS: process.env.AUTH_BYPASS,
     NODE_ENV: process.env.NODE_ENV,
   });
 

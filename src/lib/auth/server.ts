@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { isAuthBypassEnabled, PLACEHOLDER_USER, type AppUser } from "@/lib/auth/bypass";
+import { isAuthBypassActive, PLACEHOLDER_USER, type AppUser } from "@/lib/auth/bypass";
 
 /**
  * The single place server code asks "who is this?".
@@ -9,7 +9,7 @@ import { isAuthBypassEnabled, PLACEHOLDER_USER, type AppUser } from "@/lib/auth/
  * what will let it be removed in one commit.
  */
 export async function getAppUser(): Promise<AppUser | null> {
-  if (isAuthBypassEnabled()) return PLACEHOLDER_USER;
+  if (isAuthBypassActive()) return PLACEHOLDER_USER;
 
   const supabase = await createClient();
   const {
