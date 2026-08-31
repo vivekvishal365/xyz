@@ -4,9 +4,23 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export function SignOutButton({ email }: { email: string }) {
+export function SignOutButton({
+  email,
+  isPlaceholder = false,
+}: {
+  email: string;
+  isPlaceholder?: boolean;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+
+  // Nothing to sign out of while the auth bypass is on, and calling signOut()
+  // against a session that does not exist just produces a confusing error.
+  if (isPlaceholder) {
+    return (
+      <span className="font-mono text-xs text-ink-3">not signed in &middot; preview</span>
+    );
+  }
 
   async function signOut() {
     setBusy(true);

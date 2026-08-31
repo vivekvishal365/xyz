@@ -34,6 +34,34 @@ describe("public env schema", () => {
   });
 });
 
+describe("auth bypass flag", () => {
+  const base = {
+    NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: "key",
+  };
+
+  it("is off when unset", () => {
+    expect(schemas.publicSchema.parse(base).NEXT_PUBLIC_AUTH_BYPASS).toBe("false");
+  });
+
+  it("is on only for exactly \"true\"", () => {
+    expect(
+      schemas.publicSchema.parse({ ...base, NEXT_PUBLIC_AUTH_BYPASS: "true" })
+        .NEXT_PUBLIC_AUTH_BYPASS,
+    ).toBe("true");
+  });
+
+  it("falls back to off for anything malformed, rather than throwing", () => {
+    // The failure mode of a typo must be "authentication stays on".
+    for (const value of ["TRUE", "1", "yes", "on", "", "maybe"]) {
+      expect(
+        schemas.publicSchema.parse({ ...base, NEXT_PUBLIC_AUTH_BYPASS: value })
+          .NEXT_PUBLIC_AUTH_BYPASS,
+      ).toBe("false");
+    }
+  });
+});
+
 describe("server env schema", () => {
   it("requires the service role key", () => {
     expect(schemas.serverSchema.safeParse({}).success).toBe(false);

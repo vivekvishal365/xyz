@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { getAppUser } from "@/lib/auth/server";
 import { greeting, formatAppDate } from "@/lib/core/greeting";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -7,16 +7,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 export const metadata: Metadata = { title: "Home" };
 
 export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAppUser();
 
   const now = new Date();
   const displayName =
-    (user?.user_metadata?.["full_name"] as string | undefined)?.split(" ")[0] ??
-    user?.email?.split("@")[0] ??
-    null;
+    user?.displayName?.split(" ")[0] ?? user?.email.split("@")[0] ?? null;
 
   return (
     <>
