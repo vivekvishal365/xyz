@@ -2,7 +2,9 @@
 
 Economic intelligence for India. Detects meaningful changes in economic, commodity, market, weather and policy data, connects them through curated cause-and-effect relationships, and explains what could be affected.
 
-**Status: Phase 0 complete.** Foundation only — there is no data pipeline yet.
+**Status: Phase 0 complete. Phase 1 in progress** — adapters, normalizer and the forecast module are built and tested; wiring them to the database and to a UI is still to come.
+
+> ⚠️ **Authentication is currently bypassed** when `NEXT_PUBLIC_AUTH_BYPASS=true`. The five tab routes are public and a placeholder user is supplied. Temporary, for UI testing — removal steps are in `src/lib/auth/bypass.ts`.
 
 ---
 
@@ -80,10 +82,23 @@ src/
     layout/  ui/  auth/
   lib/                     service layer — MUST NOT import React
     core/                  pure domain logic, unit-tested
+    auth/                  getAppUser() + the temporary bypass
     env.ts                 §39 secret boundary, schema-validated
     supabase/              client (auth only) + server + service-role
+    ingest/                adapter interface, adapters/, normalizer, periods
+    engine/forecast/       D1 — methods, backtest, surprise
   proxy.ts                 route protection and session refresh
+scripts/
+  smoke-ingest.ts          manual live run against Open-Meteo (network)
 ```
+
+### Running the ingestion spine against a live source
+
+```bash
+npx tsx scripts/smoke-ingest.ts
+```
+
+Pulls three years of real Mumbai rainfall from Open-Meteo (no API key needed) and runs it through fetch → parse → normalize → backtest → forecast, printing every method's error and the trust verdict. Not part of `npm test`, because it makes a network call.
 
 ### Two rules the tooling enforces
 

@@ -38,12 +38,17 @@ Types, enums, unit handling, period arithmetic, and **all scoring formulas**. No
 ### `ingest`
 Adapter registry, fetch/hash/store, normalization, revision detection. Never interprets. Its contract: given a source and a window, produce observations plus an audit trail (`03-data-sources.md` §1).
 
-### `engine/forecast` — the expectation baseline **(D1)**
-Seasonal naive plus drift per indicator, producing the "expected" value §14 needs without buying consensus data. Three rules keep it honest:
+### `engine/forecast` — the expectation baseline **(D1)** — *built, Phase 1*
+Four methods per indicator — `naive`, `seasonal_naive`, `drift`, `seasonal_naive_drift` — producing the "expected" value §14 needs without buying consensus data. Three rules keep it honest:
 
 - **Backtest before trust.** A weekly job walks each indicator's history, records MAE and RMSE, and compares against the dumbest baseline (last value). A model that cannot beat that has no business producing a user-visible number; `is_trusted` stays false and the indicator shows **no estimate at all**.
 - **Store the error with the estimate.** `expectations.error_mae` snapshots the model's rolling error at the time the estimate was made, which is what makes surprise interpretable later.
 - **Never call it consensus.** The word "Expected" alone is banned in UI copy; it is a *SignalX estimate*, with the method reachable on tap.
+
+Two things the build surfaced that were not obvious from the spec:
+
+- **Methods must be scored over an identical window.** Each has a different minimum history, so scoring each from its own earliest possible origin compares one method's performance on a hard stretch against another's on an easier one. `selectBestMethod` evaluates every candidate from a common start.
+- **The `naive` baseline has to be selectable, not only a benchmark.** Comparing it against itself is tautological, so it could never qualify — which would leave every series where nothing beats a random walk with no estimate at all. That is most financial series, and it would gut §14. Carrying the last value forward is defensible when labelled honestly, and its MAE — the typical period-on-period move — is the right yardstick for "was this change unusual?". Every *other* method must still beat it.
 
 ### `engine/detect` — statistics, no LLM
 MoM/YoY, rolling z-score, trend break, threshold crossing, seasonality-adjusted deviation, surprise vs estimate. Config per indicator (`indicators.detection_config`) so thresholds are tuned, not global guesses.
