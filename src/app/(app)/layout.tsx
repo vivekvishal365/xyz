@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAppUser } from "@/lib/auth/server";
 import { PrimaryNav } from "@/components/layout/primary-nav";
@@ -23,11 +24,35 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <PrimaryNav />
       <div className="flex min-h-dvh flex-col">
         <AuthBypassBanner />
-        <header className="flex items-center justify-between border-b border-rule px-4 py-3 md:px-8">
+        <header className="flex items-center justify-between gap-4 border-b border-rule px-4 py-3 md:px-8">
           <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3 md:hidden">
             SignalX
           </span>
-          <span className="hidden md:block" />
+          {/*
+            TODO(access-control): /admin is protected by authentication only —
+            there is no role check yet, so any signed-in user can curate the
+            graph. Needs a role column and a guard before real users exist.
+          */}
+          <nav aria-label="Internal" className="hidden gap-3 md:flex">
+            <Link
+              href="/indicators"
+              className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3 hover:text-ink-2"
+            >
+              Indicators
+            </Link>
+            <Link
+              href="/admin/graph"
+              className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3 hover:text-ink-2"
+            >
+              Curation
+            </Link>
+            <Link
+              href="/admin/health"
+              className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3 hover:text-ink-2"
+            >
+              Health
+            </Link>
+          </nav>
           <SignOutButton email={user.email} isPlaceholder={user.isPlaceholder} />
         </header>
         <main className="flex-1 px-4 pb-24 pt-6 md:px-8 md:pb-10">{children}</main>

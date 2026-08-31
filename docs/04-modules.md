@@ -108,7 +108,7 @@ Blocked output is **logged to `compliance_flags` for review, never silently drop
 
 This is a code gate, not a prompt instruction. Prompts ask; gates enforce. The distinction matters because §40's constraint is now also a regulatory posture, and "we told the model not to" is not a control.
 
-### `ai/drafting` — offline graph proposals **(D9)**
+### `ai/drafting` — offline graph proposals **(D9)** — *built, Phase 2* (`src/lib/graph/drafting.ts`)
 Generates candidate edges and exposures in batches, each carrying a mechanism sentence, suggested polarity/strength/lag/confidence, and a citation or stated basis. Writes rows as `status = 'draft'`, `proposed_by = 'ai'`, tagged with a `draft_batch_id`.
 
 Runs offline, never on a request path, and produces nothing a user can see. Batch by driver — all edges from "crude oil" in one run — so the reviewer holds context across a sitting instead of context-switching every item.
@@ -122,7 +122,7 @@ Computes §10's five scores from live signals, stores a daily row with its input
 ### `validation`
 Evaluates matured signals into `signal_outcomes`. Feeds §36's intelligence metrics and, eventually, learned edge weights.
 
-### `admin` — the module the PRD omits, promoted by D9
+### `admin` — the module the PRD omits, promoted by D9 — *built, Phase 2*
 Since the founder personally approves every edge and exposure, this stops being a convenience and becomes **the tool that determines whether Phase 2 takes two weeks or six**. Design it for review throughput, not feature completeness.
 
 The review queue is the centre of it:

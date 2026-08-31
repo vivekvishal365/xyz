@@ -15,7 +15,10 @@
     "db:summary": "tsx scripts/db-summary.ts",
     "ingest": "tsx scripts/ingest.ts",
     "verify:fred": "tsx scripts/verify-fred.ts",
-    "migrate": "tsx scripts/apply-migration.ts"
+    "migrate": "tsx scripts/apply-migration.ts",
+    "db:seed:nodes": "tsx scripts/seed-graph-nodes.ts",
+    "graph:draft": "tsx scripts/draft-graph.ts",
+    "graph:pilot": "tsx scripts/seed-pilot-batch.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
