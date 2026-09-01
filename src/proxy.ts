@@ -23,11 +23,30 @@ function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+/** Paths a signed-in user should never sit on. */
+function isSignedInRedirect(pathname: string): boolean {
+  return pathname === "/" || pathname === "/login";
+}
+
+function redirectToHome(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/home";
+  url.search = "";
+  return NextResponse.redirect(url);
+}
+
 export async function proxy(request: NextRequest) {
   // TEMPORARY (see src/lib/auth/bypass.ts). Skips route protection entirely so
-  // the tab routes can be viewed without a session. Returning early also avoids
+  // the app routes can be viewed without a session. Returning early also avoids
   // a pointless Supabase round-trip on every request while it is on.
   if (isAuthBypassActive()) {
+    // The placeholder user is effectively signed in, so the same
+    // already-signed-in redirects have to apply. Without this, `/` fell through
+    // to the root page's unconditional redirect and sent you to /login WITH the
+    // bypass on — which looks exactly like the bypass not working.
+    if (isSignedInRedirect(request.nextUrl.pathname)) {
+      return redirectToHome(request);
+    }
     return NextResponse.next({ request });
   }
 
@@ -78,11 +97,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && (pathname === "/login" || pathname === "/")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/home";
-    url.search = "";
-    return NextResponse.redirect(url);
+  if (user && isSignedInRedirect(pathname)) {
+    return redirectToHome(request);
   }
 
   return response;

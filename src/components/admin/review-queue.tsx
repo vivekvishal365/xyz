@@ -9,8 +9,7 @@ import {
   rejectAction,
   undoAction,
 } from "@/app/(app)/admin/graph/actions";
-import { NodePanel } from "./node-panel";
-import { cn } from "@/lib/utils";
+import { DraftCard } from "./draft-card";
 
 /**
  * The review queue (D9).
@@ -478,127 +477,6 @@ function ProgressBar({
       <div className="h-1 w-full overflow-hidden rounded bg-surface-2">
         <div className="h-full bg-accent transition-[width]" style={{ width: `${pct}%` }} />
       </div>
-    </div>
-  );
-}
-
-function DraftCard({
-  draft, edits, editingText, textAreaRef, onTextChange, confidenceMode,
-}: {
-  draft: Draft;
-  edits: Edits;
-  editingText: boolean;
-  textAreaRef: React.RefObject<HTMLTextAreaElement | null>;
-  onTextChange: (value: string) => void;
-  confidenceMode: boolean;
-}) {
-  const isEdge = draft.kind === "edge";
-  const from = isEdge ? draft.from : draft.driver;
-  const to = isEdge ? draft.to : draft.company;
-
-  const polarity = edits.polarity ?? (isEdge ? draft.polarity : draft.direction);
-  const confidence = edits.confidence ?? draft.confidence;
-  const text = edits.text ?? (isEdge ? draft.mechanism : draft.rationale);
-  const changed = Object.keys(edits).length > 0;
-
-  return (
-    <div className="rounded border border-rule bg-surface">
-      <div className="flex items-center justify-between border-b border-rule px-3 py-1.5">
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3">
-          {isEdge ? "Causal edge" : "Company exposure"} · proposed by {draft.proposedBy}
-        </span>
-        {changed ? (
-          <span className="rounded bg-accent-bg px-1.5 py-0.5 font-mono text-[10px] text-accent-ink">
-            edited
-          </span>
-        ) : null}
-      </div>
-
-      <div className="grid grid-cols-1 items-stretch gap-2 px-3 py-3 sm:grid-cols-[1fr_auto_1fr]">
-        <NodePanel node={from} role={isEdge ? "Driver" : "Driver"} accent />
-        <div className="flex items-center justify-center px-1">
-          <span
-            className={cn(
-              "font-mono text-lg",
-              polarity === 1 ? "text-sev-low" : "text-sev-high",
-            )}
-            title={polarity === 1 ? "same direction" : "inverse"}
-          >
-            {polarity === 1 ? "→ +" : "→ −"}
-          </span>
-        </div>
-        <NodePanel node={to} role={isEdge ? "Affects" : "Company"} />
-      </div>
-
-      <div className="border-t border-rule px-3 py-2.5">
-        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-3">
-          {isEdge ? "Mechanism" : "Rationale"} — press m to edit
-        </p>
-        {editingText ? (
-          <textarea
-            ref={textAreaRef}
-            value={text}
-            onChange={(event) => onTextChange(event.target.value)}
-            rows={3}
-            className="mt-1 w-full rounded border border-accent bg-surface-2 px-2 py-1.5 text-sm outline-none"
-          />
-        ) : (
-          <p className="mt-1 text-sm leading-relaxed">{text}</p>
-        )}
-        {isEdge && draft.evidenceNote ? (
-          <p className="mt-1.5 text-[11px] text-ink-3">Evidence: {draft.evidenceNote}</p>
-        ) : null}
-        {!isEdge && draft.sourceNote ? (
-          <p className="mt-1.5 text-[11px] text-ink-3">Source: {draft.sourceNote}</p>
-        ) : null}
-      </div>
-
-      <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-rule px-3 py-2.5">
-        {isEdge ? (
-          <>
-            <Dial label="Strength" hint="1–9, 0" value={(edits.strength ?? draft.strength).toFixed(2)} changed={edits.strength !== undefined} />
-            <Dial label="Lag (days)" hint="[ ] { }" value={String(edits.lagDays ?? draft.lagDays)} changed={edits.lagDays !== undefined} />
-          </>
-        ) : (
-          <Dial label="Magnitude" hint="d" value={edits.magnitude ?? draft.magnitude} changed={edits.magnitude !== undefined} />
-        )}
-        <Dial
-          label="Confidence"
-          hint={confidenceMode ? "press a digit…" : "c + digit"}
-          value={confidence.toFixed(2)}
-          changed={edits.confidence !== undefined}
-          active={confidenceMode}
-        />
-        <Dial label="Polarity" hint="p" value={polarity === 1 ? "+1" : "−1"} changed={edits.polarity !== undefined} />
-      </div>
-    </div>
-  );
-}
-
-function Dial({
-  label, value, hint, changed, active,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  changed: boolean;
-  active?: boolean;
-}) {
-  return (
-    <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink-3">
-        {label} <span className="text-ink-3/70">{hint}</span>
-      </p>
-      <p
-        className={cn(
-          "font-mono text-base tabular-nums",
-          active && "text-accent-ink",
-          changed && "text-accent-ink",
-        )}
-      >
-        {value}
-        {changed ? " *" : ""}
-      </p>
     </div>
   );
 }
