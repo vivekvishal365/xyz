@@ -44,6 +44,8 @@ export type EdgeDraft = {
   proposedBy: string;
   batchId: string | null;
   reviewNotes: string | null;
+  decidedAt: string | null;
+  rejectionReason: string | null;
 };
 
 export type ExposureDraft = {
@@ -60,6 +62,8 @@ export type ExposureDraft = {
   proposedBy: string;
   batchId: string | null;
   reviewNotes: string | null;
+  decidedAt: string | null;
+  rejectionReason: string | null;
 };
 
 export type Draft = EdgeDraft | ExposureDraft;
@@ -179,6 +183,8 @@ export async function loadQueue(
       proposedBy: edge.proposed_by as string,
       batchId: (edge.draft_batch_id as string | null) ?? null,
       reviewNotes: (edge.review_notes as string | null) ?? null,
+      decidedAt: (edge.approved_at as string | null) ?? null,
+      rejectionReason: (edge.rejection_reason as string | null) ?? null,
     });
   }
 
@@ -197,6 +203,8 @@ export async function loadQueue(
       proposedBy: exposure.proposed_by as string,
       batchId: (exposure.draft_batch_id as string | null) ?? null,
       reviewNotes: (exposure.review_notes as string | null) ?? null,
+      decidedAt: (exposure.approved_at as string | null) ?? null,
+      rejectionReason: (exposure.rejection_reason as string | null) ?? null,
     });
   }
 
@@ -217,6 +225,56 @@ export async function loadQueue(
   });
 
   return drafts;
+}
+
+/**
+ * Items in this batch that already have a decision, newest first.
+ *
+ * The in-queue `u` undo only reaches decisions made in the current sitting —
+ * it walks an in-memory list, so a refresh loses it. A misfired keystroke
+ * discovered later needs a way back, and without one the only recourse is
+ * editing the database by hand.
+ */
+export async function loadDecided(
+  db: SupabaseClient,
+  batchId: string,
+  limit = 200,
+): Promise<Draft[]> {
+  const all = await loadQueue(db, batchId, { includeDecided: true });
+
+  return all
+    .filter((draft) => draft.status === "approved" || draft.status === "rejected")
+    .sort((a, b) => (b.decidedAt ?? "").localeCompare(a.decidedAt ?? ""))
+    .slice(0, limit);
+}
+
+/**
+ * Put a decided item back in the queue.
+ *
+ * Clears the decision entirely — status, reviewer, timestamps and any
+ * rejection reason — so the row is indistinguishable from one that was never
+ * reviewed. It deliberately does NOT revert field edits applied at approval
+ * time: those were a considered correction to the model's proposal, and
+ * throwing them away would punish the reviewer for the reopen.
+ */
+export async function reopenDraft(
+  db: SupabaseClient,
+  kind: DraftKind,
+  id: string,
+): Promise<void> {
+  const table = kind === "edge" ? "causal_edges" : "exposures";
+  const { error } = await db
+    .from(table)
+    .update({
+      status: "draft",
+      rejection_reason: null,
+      approved_by: null,
+      approved_at: null,
+      review_due_at: null,
+    })
+    .eq("id", id);
+
+  if (error) throw new Error(`reopen ${kind}: ${error.message}`);
 }
 
 export type EdgeEdits = {

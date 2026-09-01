@@ -7,6 +7,7 @@ import {
   refreshBatchCounts,
   rejectBatch,
   rejectDraft,
+  reopenDraft,
   type DraftKind,
   type EdgeEdits,
   type ExposureEdits,
@@ -73,6 +74,31 @@ export async function undoAction(kind: DraftKind, id: string): Promise<ActionRes
     return { ok: true };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "undo failed" };
+  }
+}
+
+/**
+ * Reopen a decided item from the Decided list.
+ *
+ * Distinct from `undoAction` on purpose. Undo is the hot path — optimistic, no
+ * revalidation, keeping the keyboard flow instant. Reopen is a deliberate,
+ * rare correction, so it refreshes the batch counters and revalidates the page
+ * so the lists visibly agree with the database afterwards.
+ */
+export async function reopenAction(
+  kind: DraftKind,
+  id: string,
+  batchId: string,
+): Promise<ActionResult> {
+  try {
+    const db = createServiceClient();
+    await reopenDraft(db, kind, id);
+    await refreshBatchCounts(db, batchId);
+    revalidatePath(`/admin/graph/${batchId}`);
+    revalidatePath("/admin/graph");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "reopen failed" };
   }
 }
 

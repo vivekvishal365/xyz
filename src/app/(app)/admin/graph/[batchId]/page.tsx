@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/service";
-import { listBatches, loadQueue } from "@/lib/graph/review";
+import { listBatches, loadDecided, loadQueue } from "@/lib/graph/review";
 import { ReviewQueue } from "@/components/admin/review-queue";
 import { RejectBatchButton } from "@/components/admin/reject-batch-button";
+import { DecidedList } from "@/components/admin/decided-list";
 
 export const metadata: Metadata = { title: "Review queue" };
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export default async function ReviewBatchPage({
   const batch = batches.find((candidate) => candidate.id === batchId);
   if (!batch) notFound();
 
-  const drafts = await loadQueue(db, batchId);
+  const [drafts, decided] = await Promise.all([loadQueue(db, batchId), loadDecided(db, batchId)]);
 
   return (
     <>
@@ -46,8 +47,10 @@ export default async function ReviewBatchPage({
         drafts={drafts}
         batchId={batchId}
         batchLabel={batch.scopeNote}
-        alreadyDecided={batch.itemsApproved + batch.itemsRejected}
+        alreadyDecided={decided.length}
       />
+
+      <DecidedList items={decided} batchId={batchId} />
     </>
   );
 }

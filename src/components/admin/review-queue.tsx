@@ -56,6 +56,13 @@ export function ReviewQueue({
   const [showHelp, setShowHelp] = useState(false);
   const [editingText, setEditingText] = useState(false);
   const [confidenceMode, setConfidenceMode] = useState(false);
+  /**
+   * Transient note when a key does not apply to this item kind — digits set
+   * strength, which only edges have. Silently swallowing the keystroke leaves
+   * the reviewer unsure whether anything happened, which is how a stray press
+   * turns into a misremembered decision.
+   */
+  const [ignoredKey, setIgnoredKey] = useState<string | null>(null);
 
   // Pace is measured at decision time, in the event handler. Reading the clock
   // during render (or from an effect) is impure and makes the component
@@ -82,6 +89,7 @@ export function ReviewQueue({
   );
 
   const advance = useCallback(() => {
+    setIgnoredKey(null);
     setRejecting(false);
     setRejectReason("");
     setConfidenceMode(false);
@@ -261,44 +269,46 @@ export function ReviewQueue({
           setEditingText(true);
           break;
         case "[":
-          event.preventDefault();
-          if (current.kind === "edge") {
-            setEdit({ lagDays: Math.max(0, (currentEdits.lagDays ?? current.lagDays) - 1) });
-          }
-          break;
         case "]":
-          event.preventDefault();
-          if (current.kind === "edge") {
-            setEdit({ lagDays: (currentEdits.lagDays ?? current.lagDays) + 1 });
-          }
-          break;
         case "{":
+        case "}": {
           event.preventDefault();
-          if (current.kind === "edge") {
-            setEdit({ lagDays: Math.max(0, (currentEdits.lagDays ?? current.lagDays) - 7) });
+          if (current.kind !== "edge") {
+            setIgnoredKey(`${k} adjusts lag, which only edges have`);
+            break;
           }
+          const step = k === "{" || k === "}" ? 7 : 1;
+          const sign = k === "[" || k === "{" ? -1 : 1;
+          setIgnoredKey(null);
+          setEdit({ lagDays: Math.max(0, (currentEdits.lagDays ?? current.lagDays) + sign * step) });
           break;
-        case "}":
-          event.preventDefault();
-          if (current.kind === "edge") {
-            setEdit({ lagDays: (currentEdits.lagDays ?? current.lagDays) + 7 });
-          }
-          break;
+        }
         case "d":
           event.preventDefault();
-          if (current.kind === "exposure") {
-            const currentMagnitude = currentEdits.magnitude ?? current.magnitude;
-            const next = MAGNITUDES[(MAGNITUDES.indexOf(currentMagnitude as "low") + 1) % 3];
-            setEdit({ magnitude: next });
+          if (current.kind !== "exposure") {
+            setIgnoredKey("d cycles magnitude, which only exposures have");
+            break;
           }
+          setIgnoredKey(null);
+          setEdit({
+            magnitude:
+              MAGNITUDES[
+                (MAGNITUDES.indexOf((currentEdits.magnitude ?? current.magnitude) as "low") + 1) % 3
+              ],
+          });
           break;
         case "?":
           event.preventDefault();
           setShowHelp((v) => !v);
           break;
         default:
-          if (/^[0-9]$/.test(k) && current.kind === "edge") {
+          if (/^[0-9]$/.test(k)) {
             event.preventDefault();
+            if (current.kind !== "edge") {
+              setIgnoredKey(`${k} sets strength, which only edges have — use c then a digit for confidence`);
+              break;
+            }
+            setIgnoredKey(null);
             setEdit({ strength: k === "0" ? 1 : Number(k) / 10 });
           }
       }
@@ -388,6 +398,12 @@ export function ReviewQueue({
           onTextChange={(value) => setEdit({ text: value })}
           confidenceMode={confidenceMode}
         />
+      ) : null}
+
+      {ignoredKey && !done ? (
+        <p role="status" className="mt-2 font-mono text-[11px] text-sev-med">
+          {ignoredKey}
+        </p>
       ) : null}
 
       {rejecting ? (
